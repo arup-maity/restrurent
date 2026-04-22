@@ -5,19 +5,26 @@ import { Plus } from "lucide-react";
 import { useDebounceValue } from "usehooks-ts";
 
 import Link from "next/link";
-import Image from "next/image";
 import { cn, handleApiError } from "@/utils";
 import { IoIosSearch } from "react-icons/io";
 import { adminInstance } from "@/config/axios";
 import { IoEyeOutline } from "react-icons/io5";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { sessionContext } from "@/context/Session";
 import Pagination from "@/components/common/Pagination";
 import { Ability } from "@/authentication/AccessControl";
 import { MdClose, MdOutlineModeEditOutline } from "react-icons/md";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { useReactTable, getCoreRowModel, createColumnHelper, flexRender, ColumnDef, Column } from "@tanstack/react-table";
+import DishService from "@/api-service/admin-service/dish/dish-service";
+import { DishResponseType } from "@/api-service/admin-service/dish/dish.interface";
+
+type Dish = DishResponseType;
+
+const columnHelper = createColumnHelper<Dish>();
 
 const DishesList = () => {
    // auth session
@@ -47,61 +54,82 @@ const DishesList = () => {
       setSearchValue("");
       setClearSearch(false);
    }
-   const [dishList] = useQueries({
-      queries: [
-         {
-            queryKey: ["admin-dish-categories", debouncedValue],
-            queryFn: () =>
-               adminInstance
-                  .get("/dish-service/all-dishes", {
-                     params: {
-                        page: currentPage,
-                        limit: itemsPerPage,
-                        search: debouncedValue,
-                        ...sort,
-                     },
-                  })
-                  .then((res) => res.data),
-         },
-      ],
+
+   const { data: DishList, isLoading } = useQuery({
+      queryKey: ["admin-dish-categories", debouncedValue, currentPage, itemsPerPage, sort],
+      queryFn: () =>
+         DishService.getDish({
+            page: currentPage,
+            limit: itemsPerPage,
+            search: debouncedValue,
+            ...sort,
+         }).then((res) => res.data),
    });
 
    const columns = [
-      {
-         title: "Image",
-         className: "w-[68px]",
-         render: (record: any) => (
-            <Image
-               src={record.thumbnail ? `${process.env.NEXT_PUBLIC_BUCKET_URL}${record.thumbnail}` : "/no-image.png"}
-               width={48}
-               height={48}
-               alt={record.id}
-               className="w-12 aspect-square rounded"
-            />
+      columnHelper.display({
+         id: "select",
+         header: () => <Checkbox checked={selectedAll} onCheckedChange={handleSelectedAll} />,
+         cell: () => null,
+         enableSorting: false,
+         size: 50,
+      }),
+      columnHelper.display({
+         id: "name",
+         header: "Name",
+         cell: (info) => (
+            <div className="flex items-center gap-3">
+               <Avatar>
+                  <AvatarImage
+                     src={info.row.original.thumbnail ? `${process.env.NEXT_PUBLIC_BUCKET_URL}${info.row.original.thumbnail}` : undefined}
+                     alt={info.row.original.id.toString()}
+                  />
+                  <AvatarFallback>{info.row.original.id.toString().slice(0, 2)}</AvatarFallback>
+               </Avatar>
+               <span>{info.row.original.title}</span>
+            </div>
          ),
-      },
-      {
-         index: "title",
-         title: "Name",
-         sortable: true,
-         className: "w-[20%] min-w-[250px]",
-         render: (record: any) => <div className="">{record?.title}</div>,
-      },
-      {
-         index: "slug",
-         title: "Slug",
-         sortable: true,
-         className: "w-auto min-w-[300px]",
-         render: (record: any) => <div className="">{record?.slug}</div>,
-      },
-      {
-         title: "Category",
-         className: "w-auto min-w-[300px]",
-         render: (record: any) => {
-            const list = record?.categories?.map((category: { [key: string]: any }) => category?.taxonomy?.name);
+         size: 250,
+      }),
+      columnHelper.accessor("nonVeg", {
+         header: "Type",
+         cell: (info) => (
+            <div className="flex items-center justify-center">
+               {info.getValue() ? (
+                  <div className="w-6 h-6 flex items-center justify-center">
+                     <div className="w-5 h-5 rounded border-2 border-red-600 flex items-center justify-center">
+                        <div className="w-3 h-3 rounded-full bg-red-600"></div>
+                     </div>
+                  </div>
+               ) : (
+                  <div className="w-6 h-6 flex items-center justify-center">
+                     <div className="w-5 h-5 rounded border-2 border-green-600 flex items-center justify-center">
+                        <div className="w-3 h-3 rounded-full bg-green-600"></div>
+                     </div>
+                  </div>
+               )}
+            </div>
+         ),
+         size: 80,
+      }),
+      columnHelper.accessor("price", {
+         header: "Price",
+         cell: (info) => (
+            <ul className="flex gap-2">
+               <li className="text-base">{info.row.original.price}</li>
+               <li className="text-base line-through opacity-70">{info.row.original.costPrice}</li>
+            </ul>
+         ),
+         size: 100,
+      }),
+      columnHelper.display({
+         id: "categories",
+         header: "Category",
+         cell: (info) => {
+            const list = info.row.original.categories?.map((category) => category?.taxonomy?.name);
             return (
                <ul className="flex flex-wrap items-center">
-                  {list?.map((category: string, index: number) => (
+                  {list?.map((category, index) => (
                      <li key={index}>
                         {index !== 0 && ", "}
                         {category}
@@ -110,59 +138,78 @@ const DishesList = () => {
                </ul>
             );
          },
-      },
-      {
-         title: "Price",
-         className: "w-[150px]",
-         render: (record: any) => (
-            <ul>
-               <li className="text-base">{record.price}</li>
-               <li className="text-base line-through opacity-70">{record.costPrice}</li>
-            </ul>
-         ),
-      },
-      {
-         title: "Options",
-         className: "min-w-[150px] w-[200px]",
-         render: (row: any) => (
+         size: 200,
+      }),
+      columnHelper.accessor("slug", {
+         header: "Slug",
+         cell: (info) => <div>{info.getValue()}</div>,
+         size: 250,
+      }),
+
+      columnHelper.display({
+         id: "actions",
+         header: "Options",
+         cell: (info) => (
             <div className="flex items-center justify-center gap-4">
                <button>
                   <IoEyeOutline size={20} />
                </button>
                {Ability("update", "user", session?.user) && (
-                  <Link href={`/admin/dishes/edit-dish?id=${row?.id} `}>
+                  <Link href={`/admin/dishes/edit-dish?id=${info.row.original.id}`}>
                      <MdOutlineModeEditOutline size={20} />
                   </Link>
                )}
                {Ability("detele", "user", session?.user) && (
-                  <Link href={`/admin/dishes/delete-dish?id=${row?.id} `}>
+                  <Link href={`/admin/dishes/delete-dish?id=${info.row.original.id}`}>
                      <RiDeleteBinLine size={17} />
                   </Link>
                )}
             </div>
          ),
-      },
+         size: 100,
+      }),
    ];
-   
+
    function handleSelectedRows(id: number, status: boolean) {
       setSelectedRow((prevData) => {
-         const updatedSelectedRows = status
-            ? [...prevData, id] // Add if checked
-            : prevData.filter((item) => item !== id); // Remove if unchecked
+         const updatedSelectedRows = status ? [...prevData, id] : prevData.filter((item) => item !== id);
 
-         // Compute selected all state based on updatedSelectedRows
-         const ids = dishList?.data?.dishes?.map((item) => item.id) || [];
+         const ids = DishList?.data?.map((item) => item.id) || [];
          setSelectedAll(ids.length === updatedSelectedRows.length && ids.sort().toString() === updatedSelectedRows.sort().toString());
 
          return updatedSelectedRows;
       });
    }
+
    function handleSelectedAll(status: boolean) {
-      setSelectedRow(status ? dishList?.data?.dishes?.map((item) => item.id) : []);
+      setSelectedRow(status ? DishList?.data?.map((item) => item.id) : []);
       setSelectedAll(status);
    }
+
+   function getCommonPinningStyles<T>(column: Column<T, unknown>): React.CSSProperties {
+      const isPinned = column.getIsPinned();
+
+      return {
+         position: isPinned ? "sticky" : "relative",
+         left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
+         right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
+         zIndex: isPinned ? 2 : 0,
+      };
+   }
+
+   const table = useReactTable({
+      data: DishList?.data ?? [],
+      columns: columns as ColumnDef<Dish, unknown>[],
+      manualPagination: true,
+      getCoreRowModel: getCoreRowModel(),
+      enableColumnPinning: true,
+      initialState: {
+         columnPinning: { left: ["select", "image"], right: ["actions"] },
+      },
+   });
+
    return (
-      <div className="bg-white border rounded-xl p-4">
+      <div className="">
          <div className="mb-5">
             <div className="flex flex-wrap md:flex-nowrap items-center justify-between -m-2">
                <div className="w-full md:w-full p-2">
@@ -199,75 +246,83 @@ const DishesList = () => {
                </div>
             </div>
          </div>
-         <div className="">
-            <table className="w-full border rounded-lg">
-               <thead className="bg-[#E6EAEE]">
-                  <tr>
-                     <th className="w-14 text-left border-r last:border-none border-[#B0BFCB] text-lg font-normal px-3 py-1.5">
-                        <Checkbox checked={selectedAll} onCheckedChange={handleSelectedAll} />
-                     </th>
-                     {columns.map((column, index) => (
-                        <th
-                           key={index}
-                           className={cn(`text-left border-r last:border-none border-[#B0BFCB] text-lg font-normal px-3 py-1.5`, column.className)}>
-                           {column.title}
-                        </th>
-                     ))}
-                  </tr>
-               </thead>
-               <tbody className="">
-                  {dishList?.isLoading ? (
-                     [...Array(10)].map((_, index) => (
-                        <tr key={index} className={`${index % 2 === 0 ? "bg-white" : "bg-[#FBFBFB]"}`}>
-                           <td className="border-r border-[#B0BFCB] p-2 py-3">
-                              <div className="h-6 w-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                           <td className="border-r border-[#B0BFCB] p-2 py-3">
-                              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                           <td className="border-r border-[#B0BFCB] p-2 py-3">
-                              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                           <td className="border-r border-[#B0BFCB] p-2 py-3">
-                              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                           <td className="border-r border-[#B0BFCB] p-2 py-3">
-                              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                           <td className="border-r border-[#B0BFCB] p-2 py-3">
-                              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                           <td className="p-2 py-3">
-                              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                           </td>
-                        </tr>
-                     ))
-                  ) : dishList?.data?.dishes?.length === 0 ? (
-                     <tr>
-                        <td colSpan={3}>
-                           <div className="flex justify-center p-3">No data available</div>
-                        </td>
-                     </tr>
-                  ) : (
-                     dishList?.data?.dishes?.map((row, index) => (
-                        <tr key={index} className={`${index % 2 === 0 ? "bg-white" : "bg-[#FBFBFB]"}`}>
-                           <td className="border-r last:border-none border-[#B0BFCB] p-3">
-                              <Checkbox
-                                 checked={selectedRow.includes(row.id)}
-                                 onCheckedChange={(e: boolean) => handleSelectedRows(row.id, e)}
-                                 className="data-[state=checked]:bg-[#FFE1DD] data-[state=checked]:text-black data-[state=checked]:border-[#FFE1DD]"
-                              />
-                           </td>
-                           {columns.map((column, index) => (
-                              <td key={index} className="border-r last:border-none border-[#B0BFCB] p-3">
-                                 {column.render(row)}
-                              </td>
+         <div className="relative">
+            <div className="overflow-x-auto overflow-y-auto custom-scroll-container max-h-[calc(100vh-230px)] 3xl:max-h-[calc(100vh-280px)] transition-all duration-300 ease-in-out hover:backdrop-blur-sm">
+               <table className="w-full table-fixed border-collapse text-sm">
+                  <thead className="bg-gray-200 border-b border-gray-100 sticky top-0 z-10">
+                     {table.getHeaderGroups().map((headerGroup) => (
+                        <tr key={headerGroup.id}>
+                           {headerGroup.headers.map((header) => (
+                              <th
+                                 key={header.id}
+                                 style={{
+                                    ...getCommonPinningStyles(header.column),
+                                    width: header.getSize(),
+                                 }}
+                                 className={cn(
+                                    `text-left border-r last:border-none border-gray-100 text-lg font-normal px-3 py-1.5`,
+                                    header.column.getIsPinned() && "bg-gray-200",
+                                 )}>
+                                 {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                              </th>
                            ))}
                         </tr>
-                     ))
-                  )}
-               </tbody>
-            </table>
+                     ))}
+                  </thead>
+                  <tbody>
+                     {isLoading ? (
+                        [...Array(10)].map((_, index) => (
+                           <tr key={index} className={`${index % 2 === 0 ? "bg-white" : "bg-gray-200"}`}>
+                              {columns.map((_, colIndex) => (
+                                 <td
+                                    key={colIndex}
+                                    className={cn(
+                                       "border-r border-gray-100 p-2 py-3",
+                                       colIndex === 0 && "sticky left-0 z-10",
+                                       colIndex === columns.length - 1 && "sticky right-0 z-10",
+                                       colIndex % 2 === 0 ? "bg-white" : "bg-[#FBFBFB]",
+                                    )}>
+                                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                                 </td>
+                              ))}
+                           </tr>
+                        ))
+                     ) : DishList?.data?.length === 0 ? (
+                        <tr>
+                           <td colSpan={columns.length}>
+                              <div className="flex justify-center p-3">No data available</div>
+                           </td>
+                        </tr>
+                     ) : (
+                        table.getRowModel().rows.map((row, index) => (
+                           <tr key={row.id} className={`group border-b border-gray-100 transition ${index % 2 === 0 ? "bg-white" : "bg-gray-100"}`}>
+                              {row.getVisibleCells().map((cell) => (
+                                 <td
+                                    key={cell.id}
+                                    style={{
+                                       ...getCommonPinningStyles(cell.column),
+                                       width: cell.column.getSize(),
+                                    }}
+                                    className={cn(
+                                       `border-r last:border-none border-gray-200 p-2 group-hover:bg-gray-200`,
+                                       cell.column.getIsPinned() && (index % 2 === 0 ? "bg-white" : "bg-white"),
+                                    )}>
+                                    {cell.column.id === "select" ? (
+                                       <Checkbox
+                                          checked={selectedRow.includes(row.original.id)}
+                                          onCheckedChange={(e: boolean) => handleSelectedRows(row.original.id, e)}
+                                       />
+                                    ) : (
+                                       flexRender(cell.column.columnDef.cell, cell.getContext())
+                                    )}
+                                 </td>
+                              ))}
+                           </tr>
+                        ))
+                     )}
+                  </tbody>
+               </table>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
                {totalItems !== 0 && (
                   <div className="flex items-center gap-4">
