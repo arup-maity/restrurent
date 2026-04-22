@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import { Check } from "lucide-react"
+
 import { cn } from "@/lib/utils"
-import { CheckIcon } from "@radix-ui/react-icons"
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
@@ -12,15 +13,15 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer h-4 w-4 shrink-0 rounded-sm border border-zinc-200 border-zinc-900 shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-zinc-900 data-[state=checked]:text-zinc-50 dark:border-zinc-800 dark:border-zinc-50 dark:focus-visible:ring-zinc-300 dark:data-[state=checked]:bg-zinc-50 dark:data-[state=checked]:text-zinc-900",
+      "grid place-content-center peer h-4 w-4 shrink-0 rounded-sm border border-oklch(0.92 0.004 286.32) border-oklch(0.21 0.006 285.885) shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-oklch(0.705 0.015 286.067) disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-oklch(0.21 0.006 285.885) data-[state=checked]:text-oklch(0.985 0 0) dark:border-oklch(1 0 0 / 10%) dark:border-oklch(0.92 0.004 286.32) dark:focus-visible:ring-oklch(0.552 0.016 285.938) dark:data-[state=checked]:bg-oklch(0.92 0.004 286.32) dark:data-[state=checked]:text-oklch(0.21 0.006 285.885)",
       className
     )}
     {...props}
   >
     <CheckboxPrimitive.Indicator
-      className={cn("flex items-center justify-center text-current")}
+      className={cn("grid place-content-center text-current")}
     >
-      <CheckIcon className="h-4 w-4" />
+      <Check className="h-4 w-4" />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))
