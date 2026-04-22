@@ -191,125 +191,287 @@ const AddCategory = () => {
    });
 
    return (
-      <Card>
-         <CardContent>
-            <div className="text-lg font-medium mb-4">Add Dish</div>
-            <div className="">
-               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="flex flex-wrap -m-4">
-                     <div className="w-9/12 space-y-4 p-4">
-                        <Field>
+      <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+         {/* Header */}
+         <div className="flex items-center justify-between">
+            <div>
+               <h1 className="text-2xl font-semibold tracking-tight">{dishId ? "Edit Dish" : "Add New Dish"}</h1>
+               <p className="text-muted-foreground mt-1">{dishId ? "Update dish information and settings" : "Create a new dish for your menu"}</p>
+            </div>
+            <div className="flex gap-3">
+               <Button type="button" variant="outline" onClick={() => window.history.back()}>
+                  Cancel
+               </Button>
+               <Button
+                  type="submit"
+                  form="dish-form"
+                  disabled={createDishMutation.isPending || updateDishMutation.isPending}
+                  className="min-w-[120px]">
+                  {createDishMutation.isPending || updateDishMutation.isPending ? (
+                     <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                     </>
+                  ) : dishId ? (
+                     "Update Dish"
+                  ) : (
+                     "Create Dish"
+                  )}
+               </Button>
+            </div>
+         </div>
+
+         {/* Form */}
+         <form id="dish-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+               {/* Left Column - Main Content */}
+               <div className="lg:col-span-2 space-y-6">
+                  {/* Basic Information Card */}
+                  <Card className="border shadow-sm">
+                     <CardContent className="p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                           <div>
+                              <h2 className="text-xl font-semibold">Basic Information</h2>
+                              <p className="text-sm text-muted-foreground">Essential details about the dish</p>
+                           </div>
                            <Controller
                               name="nonVeg"
                               control={control}
                               render={({ field }) => (
-                                 <div className="flex items-center space-x-2">
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} id="nonVeg" className="w-5 h-5" />
-                                    <FieldLabel htmlFor="nonVeg">Non-Veg</FieldLabel>
-                                 </div>
+                                 <label
+                                    className={`flex items-center gap-3 rounded-xl border-2 p-4 transition-all cursor-pointer hover:shadow-md select-none ${
+                                       field.value
+                                          ? "border-red-200 bg-red-50 hover:border-red-300 dark:border-red-900 dark:bg-red-950"
+                                          : "border-green-200 bg-green-50 hover:border-green-300 dark:border-green-900 dark:bg-green-950"
+                                    }`}>
+                                    <Checkbox
+                                       checked={field.value}
+                                       onCheckedChange={field.onChange}
+                                       className={`h-5 w-5 rounded border-2 ${
+                                          field.value
+                                             ? "border-red-500 bg-red-500 data-[state=checked]:bg-red-500 dark:border-red-600"
+                                             : "border-green-500 data-[state=checked]:bg-green-500 dark:border-green-600"
+                                       }`}
+                                    />
+                                    <div className="flex flex-col">
+                                       <span className="font-semibold text-sm">{field.value ? "🔴 Non-Vegetarian" : "🟢 Vegetarian"}</span>
+                                       <span
+                                          className={`text-xs font-medium ${field.value ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                                          {field.value ? "Contains meat or eggs" : "Plant-based dish"}
+                                       </span>
+                                    </div>
+                                 </label>
                               )}
                            />
-                        </Field>
-                        <Field className="gap-1">
-                           <FieldLabel htmlFor="title">Dish Name</FieldLabel>
-                           <Controller name="title" control={control} render={({ field }) => <Input {...field} />} />
-                           {errors.title && <FieldError>{errors.title.message}</FieldError>}
-                        </Field>
-                        <Field>
-                           <FieldLabel htmlFor="slug">Slug</FieldLabel>
-                           <Controller name="slug" control={control} render={({ field }) => <Textarea {...field} rows={1} />} />
-                           {errors.slug && <FieldError>{errors.slug.message}</FieldError>}
-                        </Field>
-                        <Field>
-                           <FieldLabel htmlFor="shortDescription">Short Description</FieldLabel>
-                           <Controller name="shortDescription" control={control} render={({ field }) => <Textarea {...field} rows={4} />} />
-                           {errors.shortDescription && <FieldError>{errors.shortDescription.message}</FieldError>}
-                        </Field>
-                        <div className="flex flex-wrap -m-2">
-                           <div className="w-6/12 space-y-4 p-2">
-                              <Field>
-                                 <FieldLabel htmlFor="price">Selling Price</FieldLabel>
+                        </div>
+
+                        <div className="space-y-4">
+                           <Field className="gap-2">
+                              <FieldLabel htmlFor="title" className="text-base">
+                                 Dish Name *
+                              </FieldLabel>
+                              <Controller
+                                 name="title"
+                                 control={control}
+                                 render={({ field }) => (
+                                    <Input {...field} placeholder="e.g., Butter Chicken, Margherita Pizza" className="h-11 text-base" />
+                                 )}
+                              />
+                              {errors.title && <FieldError>{errors.title.message}</FieldError>}
+                           </Field>
+
+                           <Field className="gap-2">
+                              <FieldLabel htmlFor="slug" className="text-base">
+                                 Slug *
+                              </FieldLabel>
+                              <Controller
+                                 name="slug"
+                                 control={control}
+                                 render={({ field }) => (
+                                    <div className="relative">
+                                       <Input {...field} placeholder="dish-url-slug" className="h-11 text-base font-mono" readOnly />
+                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Auto-generated</div>
+                                    </div>
+                                 )}
+                              />
+                              {errors.slug && <FieldError>{errors.slug.message}</FieldError>}
+                           </Field>
+
+                           <Field className="gap-2">
+                              <FieldLabel htmlFor="shortDescription" className="text-base">
+                                 Short Description *
+                              </FieldLabel>
+                              <Controller
+                                 name="shortDescription"
+                                 control={control}
+                                 render={({ field }) => (
+                                    <Textarea
+                                       {...field}
+                                       placeholder="Brief description for menu cards (2-3 lines)"
+                                       rows={3}
+                                       className="resize-none text-base"
+                                    />
+                                 )}
+                              />
+                              {errors.shortDescription && <FieldError>{errors.shortDescription.message}</FieldError>}
+                           </Field>
+                        </div>
+                     </CardContent>
+                  </Card>
+
+                  {/* Pricing & Category Card */}
+                  <Card className="border shadow-sm">
+                     <CardContent className="p-6 space-y-6">
+                        <div>
+                           <h2 className="text-xl font-semibold">Pricing & Category</h2>
+                           <p className="text-sm text-muted-foreground">Set prices and categorization</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-4">
+                              <Field className="gap-2">
+                                 <FieldLabel htmlFor="price" className="text-base">
+                                    Selling Price *
+                                 </FieldLabel>
                                  <Controller
                                     name="price"
                                     control={control}
                                     render={({ field }) => (
-                                       <Input
-                                          type="number"
-                                          min={0}
-                                          value={field.value}
-                                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                       />
+                                       <div className="relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                                          <Input
+                                             type="number"
+                                             min={0}
+                                             step="0.01"
+                                             value={field.value}
+                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                             placeholder="0.00"
+                                             className="h-11 pl-8 text-base"
+                                          />
+                                       </div>
                                     )}
                                  />
                                  {errors.price && <FieldError>{errors.price.message}</FieldError>}
                               </Field>
-                              <Field>
-                                 <FieldLabel htmlFor="costPrice">Cost Price</FieldLabel>
+
+                              <Field className="gap-2">
+                                 <FieldLabel htmlFor="costPrice" className="text-base">
+                                    Cost Price *
+                                 </FieldLabel>
                                  <Controller
                                     name="costPrice"
                                     control={control}
                                     render={({ field }) => (
-                                       <Input
-                                          type="number"
-                                          min={0}
-                                          value={field.value}
-                                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                       />
+                                       <div className="relative">
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                                          <Input
+                                             type="number"
+                                             min={0}
+                                             step="0.01"
+                                             value={field.value}
+                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                             placeholder="0.00"
+                                             className="h-11 pl-8 text-base"
+                                          />
+                                       </div>
                                     )}
                                  />
                                  {errors.costPrice && <FieldError>{errors.costPrice.message}</FieldError>}
                               </Field>
                            </div>
-                           <div className="w-6/12 space-y-4 p-2">
-                              <Field>
-                                 <FieldLabel htmlFor="category">Category</FieldLabel>
+
+                           <div className="space-y-4">
+                              <Field className="gap-2">
+                                 <FieldLabel htmlFor="category" className="text-base">
+                                    Category
+                                 </FieldLabel>
                                  <Controller
                                     name="category"
                                     control={control}
                                     render={({ field: { onChange, value, ...rest } }) => (
-                                       <MultiSelect options={categoryList} selected={value} onChange={onChange} placeholder="Select category..." />
+                                       <MultiSelect
+                                          options={categoryList}
+                                          selected={value}
+                                          onChange={onChange}
+                                          placeholder="Select categories..."
+                                          className="min-h-[44px]"
+                                       />
                                     )}
                                  />
                               </Field>
+
+                              {/* Profit Margin Indicator */}
+                              {watch("price") > 0 && watch("costPrice") > 0 && (
+                                 <div className="rounded-lg border bg-muted/30 p-4">
+                                    <div className="text-sm font-medium">Profit Margin</div>
+                                    <div className="text-2xl font-bold text-green-600">
+                                       {(((watch("price") - watch("costPrice")) / watch("price")) * 100).toFixed(1)}%
+                                    </div>
+                                 </div>
+                              )}
                            </div>
                         </div>
-                        <Field>
-                           <FieldLabel htmlFor="description">Description</FieldLabel>
-                           <Controller name="description" control={control} render={({ field }) => <Textarea {...field} rows={10} />} />
+                     </CardContent>
+                  </Card>
+
+                  {/* Detailed Description Card */}
+                  <Card className="border shadow-sm">
+                     <CardContent className="p-6 space-y-4">
+                        <div>
+                           <h2 className="text-xl font-semibold">Detailed Description</h2>
+                           <p className="text-sm text-muted-foreground">Full description for website and menu</p>
+                        </div>
+                        <Field className="gap-2">
+                           <Controller
+                              name="description"
+                              control={control}
+                              render={({ field }) => (
+                                 <Textarea
+                                    {...field}
+                                    placeholder="Provide detailed information about ingredients, preparation, taste profile, etc."
+                                    rows={8}
+                                    className="resize-none text-base"
+                                 />
+                              )}
+                           />
                            {errors.description && <FieldError>{errors.description.message}</FieldError>}
                         </Field>
-                     </div>
-                     <div className="w-3/12 p-4">
+                     </CardContent>
+                  </Card>
+               </div>
+
+               {/* Right Column - Thumbnail */}
+               <div className="lg:col-span-1">
+                  <Card className="border shadow-sm sticky top-6">
+                     <CardContent className="p-6 space-y-4">
+                        <div>
+                           <h2 className="text-xl font-semibold">Thumbnail Image</h2>
+                           <p className="text-sm text-muted-foreground">Upload an appetizing photo</p>
+                        </div>
                         <Field>
-                           <FieldLabel htmlFor="thumbnail">Thumbnail</FieldLabel>
-                           <div className="w-full">
-                              <Controller
-                                 name="thumbnail"
-                                 control={control}
-                                 render={({ field: { value, onChange, ...rest } }) => (
+                           <Controller
+                              name="thumbnail"
+                              control={control}
+                              render={({ field: { value, onChange, ...rest } }) => (
+                                 <div className="space-y-3">
                                     <ImageUpload
                                        image={value ? process.env.NEXT_PUBLIC_BUCKET_URL + value : ""}
                                        onImage={onChange}
                                        aspect={500 / 600}
-                                       className="aspect-[500/600]"
+                                       className="aspect-[500/600] w-full rounded-lg overflow-hidden border-2 border-dashed"
                                     />
-                                 )}
-                              />
-                              {errors.thumbnail && <FieldError>{errors.thumbnail.message}</FieldError>}
-                           </div>
+                                    <div className="text-xs text-muted-foreground text-center">Recommended: 500x600px • JPG, PNG</div>
+                                 </div>
+                              )}
+                           />
+                           {errors.thumbnail && <FieldError>{errors.thumbnail.message}</FieldError>}
                         </Field>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <Button type="submit" disabled={createDishMutation.isPending || updateDishMutation.isPending}>
-                        {(createDishMutation.isPending || updateDishMutation.isPending) && <Loader2 className="animate-spin" />}
-                        Save Dish
-                     </Button>
-                  </div>
-               </form>
+                     </CardContent>
+                  </Card>
+               </div>
             </div>
-         </CardContent>
-      </Card>
+         </form>
+      </div>
    );
 };
 
